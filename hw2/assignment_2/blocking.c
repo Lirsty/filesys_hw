@@ -73,13 +73,18 @@ int copy_blocking_io(const char *from, const char *to)
         }
         (void)checksum;
 
-        ssize_t written = write(out_fd, buf, bytes_read);
-        if (written != bytes_read)
+        ssize_t total_written = 0;
+        while (total_written < bytes_read)
         {
-            free(buf);
-            close(in_fd);        
-            close(out_fd); 
-            PANIC("write");
+            ssize_t written = write(out_fd, buf + total_written, bytes_read - total_written);
+            if (written < 0) 
+            {
+                free(buf);
+                close(in_fd);
+                close(out_fd);
+                PANIC("write");
+            }
+            total_written += written;
         }
 
         total_read += bytes_read;
