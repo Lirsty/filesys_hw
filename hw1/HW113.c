@@ -25,14 +25,14 @@
     unsigned long __diff =                      \
         1000000 * (__tv2.tv_sec - __tv1.tv_sec) \
         + (__tv2.tv_usec - __tv1.tv_usec);      \
-    printf("[%s]: %ld (us)\n", name, __diff);   \
+    printf("%-25s:   %.4f sec\n", name, __diff / 1000000.0);  \
 } while (0); 
 
-int seq_read        (char *map, char *buf);
-int seq_write       (int fd, char *map, const char *buf);
-int random_read     (char *map, char *buf);
-int random_write_1  (char *map, const char *buf);
-int random_write_2  (const int fd, char *map, const char *buf);
+int seq_read                (char *map, char *buf);
+int seq_write               (int fd, char *map, const char *buf);
+int random_read             (char *map, char *buf);
+int random_write_buffered   (char *map, const char *buf);
+int random_write_sync       (const int fd, char *map, const char *buf);
 
 int main()
 {
@@ -60,21 +60,21 @@ int main()
         return -1;
     }
 
-    char *buf = malloc(FILE_SIZE);
-    if (!buf)
+    char *buf;
+    if (posix_memalign((void **)&buf, 4096, FILE_SIZE) != 0)
     {
-        perror("malloc");
+        perror("posix_memalign");
         close(fd);
         return -1;
     }
     memset(buf, 'X', FILE_SIZE);
 
 
-    MEASURE_TIME("sequential write", { seq_write(fd, map, buf); })
-    MEASURE_TIME("sequential read",  { seq_read(map, buf); })
-    MEASURE_TIME("random read",      { random_read(map, buf); })
-    MEASURE_TIME("random write 1",   { random_write_1(map, buf); })
-    MEASURE_TIME("random write 2",   { random_write_2(fd, map, buf); })
+    MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
+    MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
+    MEASURE_TIME("3. Random Read",              { random_read(map, buf); })
+    MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(map, buf); })
+    MEASURE_TIME("5. Random Sync Write",        { random_write_sync(fd, map, buf); })
 
     msync(map, FILE_SIZE, MS_SYNC);
     munmap(map, FILE_SIZE);
@@ -105,11 +105,18 @@ int seq_write(const int fd, char *map, const char *buf)
     for (size_t i = 0; i < FILE_SIZE; i += WRITE_CHUNK_SIZE)
     {
         memcpy(map + i, buf + i, WRITE_CHUNK_SIZE);
-        if (fsync(fd) != 0)
-        {
-            perror("fsync");
-            return -1;
-        }
+    }
+    
+    if (msync(map, FILE_SIZE, MS_SYNC) != 0)
+    {
+        perror("msync");
+        return -1;
+    }
+    
+    if (fsync(fd) != 0)
+    {
+        perror("fsync");
+        return -1;
     }
     return 0;
 }
@@ -125,7 +132,7 @@ int random_read(char *map, char *buf)
     return 0;
 }
 
-int random_write_1(char *map, const char *buf)
+int random_write_buffered(char *map, const char *buf)
 {
     for (int i = 0; i < 50000; ++i)
     {
@@ -136,13 +143,19 @@ int random_write_1(char *map, const char *buf)
     return 0;
 }
 
-int random_write_2(const int fd, char *map, const char *buf)
+int random_write_sync(const int fd, char *map, const char *buf)
 {
     for (int i = 0; i < 50000; ++i)
     {
         /* int ofs = (rand() % (FILE_SIZE_MB * 1024 * 1024) / 4096) * 4096; */
         int ofs = (rand() & ((FILE_SIZE_MB << 8) - 1)) << 12;
         memcpy(map + ofs, buf + ofs, WRITE_CHUNK_SIZE);
+
+        if (msync(map + ofs, WRITE_CHUNK_SIZE, MS_SYNC) != 0)
+        {
+            perror("msync");
+            return -1;
+        }
 
         if (fsync(fd) != 0)
         {
