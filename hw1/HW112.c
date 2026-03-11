@@ -53,9 +53,6 @@ int main()
     }
     memset(buf, 'X', FILE_SIZE);
 
-    write(fd, buf, FILE_SIZE);
-    fsync(fd);
-    
     MEASURE_TIME("1. Sequential Read",          { seq_read(fd, buf); })
     MEASURE_TIME("2. Sequential Write",         { seq_write(fd, buf); })
     MEASURE_TIME("3. Random Read",              { random_read(fd, buf); })
