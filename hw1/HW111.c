@@ -32,7 +32,7 @@ int random_write_sync       (FILE *fp, const int fd, const char *buf);
 int main()
 {
     srand(time(NULL));
-    FILE *fp = fopen(FILE_NAME, "w+b");
+    FILE *fp = fopen(FILE_NAME, "r+b");
     if (!fp)
     {
         perror("fopen");

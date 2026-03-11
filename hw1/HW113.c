@@ -38,7 +38,7 @@ int main()
 {
     srand(time(NULL));
 
-    int fd = open(FILE_NAME, O_RDWR | O_CREAT);
+    int fd = open(FILE_NAME, O_RDWR);
     if (fd == -1)
     {
         perror("open");
