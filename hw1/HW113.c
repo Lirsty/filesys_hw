@@ -69,6 +69,8 @@ int main()
     }
     memset(buf, 'X', FILE_SIZE);
 
+    write(fd, buf, FILE_SIZE);
+    fsync(fd);
 
     MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
     MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
@@ -112,7 +114,7 @@ int seq_write(const int fd, char *map, const char *buf)
         perror("msync");
         return -1;
     }
-    
+
     if (fsync(fd) != 0)
     {
         perror("fsync");
