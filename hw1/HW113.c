@@ -144,13 +144,17 @@ int random_write_buffered(char *map, const char *buf)
 
 int random_write_sync(const int fd, char *map, const char *buf)
 {
+    long page_size = getpagesize();
+
     for (int i = 0; i < 50000; ++i)
     {
         /* int ofs = (rand() % (FILE_SIZE_MB * 1024 * 1024) / 4096) * 4096; */
         int ofs = (rand() & ((FILE_SIZE_MB << 8) - 1)) << 12;
         memcpy(map + ofs, buf + ofs, WRITE_CHUNK_SIZE);
 
-        if (msync(map + ofs, WRITE_CHUNK_SIZE, MS_SYNC) != 0)
+        char *sync_start = (char *)((uintptr_t)(map + ofs) & ~(page_size - 1));
+        
+        if (msync(sync_start, page_size, MS_SYNC) != 0)
         {
             perror("msync");
             return -1;
