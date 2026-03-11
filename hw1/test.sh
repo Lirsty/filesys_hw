@@ -12,7 +12,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 echo "=========================================================="
-echo "   File System I/O Benchmark Automation (Linux/GCP)"
+echo "   File System I/O Benchmark Automation"
 echo "=========================================================="
 
 for SRC in "${SOURCES[@]}"; do
