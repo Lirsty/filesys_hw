@@ -32,7 +32,7 @@
 int seq_read                (char *map, char *buf);
 int seq_write               (int fd, char *map, const char *buf);
 int random_read             (char *map, char *buf);
-int random_write_buffered   (char *map, const char *buf);
+int random_write_buffered   (const int fd, char *map, const char *buf);
 int random_write_sync       (const int fd, char *map, const char *buf);
 
 int main()
@@ -73,7 +73,7 @@ int main()
     MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
     MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
     MEASURE_TIME("3. Random Read",              { random_read(map, buf); })
-    MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(map, buf); })
+    MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(fd, map, buf); })
     MEASURE_TIME("5. Random Sync Write",        { random_write_sync(fd, map, buf); })
 
     msync(map, FILE_SIZE, MS_SYNC);
@@ -132,13 +132,25 @@ int random_read(char *map, char *buf)
     return 0;
 }
 
-int random_write_buffered(char *map, const char *buf)
+int random_write_buffered(const int fd, char *map, const char *buf)
 {
     for (int i = 0; i < 50000; ++i)
     {
         /* int ofs = (rand() % (FILE_SIZE_MB * 1024 * 1024) / 4096) * 4096; */
         int ofs = (rand() & ((FILE_SIZE_MB << 8) - 1)) << 12;
         memcpy(map + ofs, buf + ofs, WRITE_CHUNK_SIZE);
+    }
+
+    if (msync(map, FILE_SIZE, MS_SYNC) != 0)
+    {
+        perror("msync");
+        return -1;
+    }
+
+    if (fsync(fd) != 0)
+    {
+        perror("fsync");
+        return -1;
     }
     return 0;
 }
