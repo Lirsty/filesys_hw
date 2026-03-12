@@ -18,6 +18,12 @@
 #define READ_CHUNK_SIZE     4096
 #define WRITE_CHUNK_SIZE    2048
 
+#define FLUSH_CACHE() do { \
+    printf("Cleaning Page Cache...\n"); \
+    system("sync"); \
+    system("echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null"); \
+} while (0)
+
 #define MEASURE_TIME(name, code_block) do {     \
     struct timeval __tv1, __tv2;                \
     gettimeofday(&__tv1, NULL);                 \
@@ -71,9 +77,13 @@ int main()
     memset(buf, 'X', FILE_SIZE);
 
     MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
+    FLUSH_CACHE();
     MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
+    FLUSH_CACHE();
     MEASURE_TIME("3. Random Read",              { random_read(map, buf); })
+    FLUSH_CACHE();
     MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(fd, map, buf); })
+    FLUSH_CACHE();
     MEASURE_TIME("5. Random Sync Write",        { random_write_sync(fd, map, buf); })
 
     msync(map, FILE_SIZE, MS_SYNC);

@@ -15,6 +15,7 @@
 #define FILE_SIZE_MB    100
 #define FILE_SIZE       (FILE_SIZE_MB * 1024 * 1024)
 
+#define PAGE_SIZE_16K       16384
 #define READ_CHUNK_SIZE     4096
 #define WRITE_CHUNK_SIZE    2048
 
@@ -70,10 +71,10 @@ int main()
     }
     memset(buf, 'X', FILE_SIZE);
 
-    MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
-    MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
-    MEASURE_TIME("3. Random Read",              { random_read(map, buf); })
-    MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(fd, map, buf); })
+    //MEASURE_TIME("1. Sequential Read",          { seq_read(map, buf); })
+    //MEASURE_TIME("2. Sequential Write",         { seq_write(fd, map, buf); })
+    //MEASURE_TIME("3. Random Read",              { random_read(map, buf); })
+    //MEASURE_TIME("4. Random Buffered Write",    { random_write_buffered(fd, map, buf); })
     MEASURE_TIME("5. Random Sync Write",        { random_write_sync(fd, map, buf); })
 
     msync(map, FILE_SIZE, MS_SYNC);
@@ -161,8 +162,7 @@ int random_write_sync(const int fd, char *map, const char *buf)
 
     for (int i = 0; i < 50000; ++i)
     {
-        /* int ofs = (rand() % (FILE_SIZE_MB * 1024 * 1024) / 4096) * 4096; */
-        int ofs = (rand() & ((FILE_SIZE_MB << 8) - 1)) << 12;
+        int ofs = (rand() % (FILE_SIZE_MB * 1024 * 1024 - WRITE_CHUNK_SIZE)) & ~(PAGE_SIZE_16K - 1);
         memcpy(map + ofs, buf + ofs, WRITE_CHUNK_SIZE);
 
         char *sync_start = (char *)((uintptr_t)(map + ofs) & ~(page_size - 1));
