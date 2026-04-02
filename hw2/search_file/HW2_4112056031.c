@@ -58,11 +58,14 @@ void search_file(const char *base_path, const char *target_file, int *found)
 
     while ((entry = readdir(dir)) != NULL)
     {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
             continue;
-        }
 
-        snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
+
+        if (strcmp(base_path, "/") == 0)
+            snprintf(path, sizeof(path), "/%s", entry->d_name);
+        else
+            snprintf(path, sizeof(path), "%s/%s", base_path, entry->d_name);
 
         if (strcmp(entry->d_name, target_file) == 0)
         {
